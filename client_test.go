@@ -3,6 +3,9 @@ package helmclient
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"k8s.io/client-go/tools/clientcmd"
+	"testing"
 
 	"helm.sh/helm/v3/pkg/action"
 
@@ -329,4 +332,34 @@ func ExampleHelmClient_RollbackRelease() {
 	if err := helmClient.RollbackRelease(&chartSpec); err != nil {
 		return
 	}
+}
+
+func TestHelmClient_Template(t *testing.T) {
+	flags, err := clientcmd.BuildConfigFromFlags("", "~/.kube/config")
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	r := &RestConfClientOptions{
+		Options: &Options{
+			Namespace:        "default",
+			RepositoryConfig: "~/config",
+			RepositoryCache:  "~/cache",
+			Debug:            false,
+			Linting:          false,
+			DebugLog:         nil,
+			RegistryConfig:   "",
+			Output:           nil,
+		},
+		RestConfig: flags,
+	}
+
+	client, err := NewClientFromRestConf(r)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	template, err := client.Template("wordpress-15.1.2.tgz", "xxx")
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	fmt.Println(string(template))
 }

@@ -2,7 +2,6 @@ package helmclient
 
 import (
 	"context"
-
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/release"
@@ -28,6 +27,7 @@ type Client interface {
 	UninstallRelease(spec *ChartSpec) error
 	UninstallReleaseByName(name string) error
 	TemplateChart(spec *ChartSpec) ([]byte, error)
+	Template(chartPath, releaseName string) ([]byte, error)
 	LintChart(spec *ChartSpec) error
 	SetDebugLog(debugLog action.DebugLog)
 	ListReleaseHistory(name string, max int) ([]*release.Release, error)

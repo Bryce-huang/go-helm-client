@@ -448,6 +448,47 @@ func (c *HelmClient) lint(chartPath string, values map[string]interface{}) error
 
 	return nil
 }
+func (c *HelmClient) Template(chartPath, releaseName string) ([]byte, error) {
+	client := action.NewInstall(c.ActionConfig)
+	client.Replace = true // Skip the name check
+	client.ClientOnly = true
+	client.APIVersions = []string{}
+	client.IncludeCRDs = true
+	client.DryRun = true
+	client.ReleaseName = releaseName
+
+	helmChart, err := loader.Load(chartPath)
+	if err != nil {
+		return nil, err
+	}
+	if helmChart.Metadata.Type != "" && helmChart.Metadata.Type != "application" {
+		return nil, fmt.Errorf(
+			"chart %q has an unsupported type and is not installable: %q",
+			helmChart.Metadata.Name,
+			helmChart.Metadata.Type,
+		)
+	}
+	out := new(bytes.Buffer)
+	rel, err := client.Run(helmChart, map[string]interface{}{})
+
+	// We ignore a potential error here because, when the --debug flag was specified,
+	// we always want to print the YAML, even if it is not valid. The error is still returned afterwards.
+	if rel != nil {
+		var manifests bytes.Buffer
+		fmt.Fprintln(&manifests, strings.TrimSpace(rel.Manifest))
+		if !client.DisableHooks {
+			for _, m := range rel.Hooks {
+				fmt.Fprintf(&manifests, "---\n# Source: %s\n%s\n", m.Path, m.Manifest)
+			}
+		}
+
+		// if we have a list of files to render, then check that each of the
+		// provided files exists in the chart.
+		fmt.Fprintf(out, "%s", manifests.String())
+	}
+
+	return out.Bytes(), err
+}
 
 // TemplateChart returns a rendered version of the provided ChartSpec 'spec' by performing a "dry-run" install.
 func (c *HelmClient) TemplateChart(spec *ChartSpec) ([]byte, error) {
